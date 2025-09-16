@@ -1,0 +1,143 @@
+import java.util.*;
+
+// Restaurant class
+class Restaurant {
+    int id;
+    String name;
+    List<String> menu;
+
+    Restaurant(int id, String name, List<String> menu) {
+        this.id = id;
+        this.name = name;
+        this.menu = menu;
+    }
+}
+
+// User class
+class User {
+    int id;
+    String name;
+    int locationId; // Node in the graph
+
+    User(int id, String name, int locationId) {
+        this.id = id;
+        this.name = name;
+        this.locationId = locationId;
+    }
+}
+
+// Order class with priority
+class Order implements Comparable<Order> {
+    int orderId;
+    User user;
+    Restaurant restaurant;
+    double priority; // higher = more urgent
+
+    Order(int orderId, User user, Restaurant restaurant, double priority) {
+        this.orderId = orderId;
+        this.user = user;
+        this.restaurant = restaurant;
+        this.priority = priority;
+    }
+
+    @Override
+    public int compareTo(Order o) {
+        // Max-heap: higher priority first
+        return Double.compare(o.priority, this.priority);
+    }
+}
+
+// Graph class for restaurants and users
+class Graph {
+    int V;
+    List<List<Edge>> adjList;
+
+    static class Edge {
+        int dest;
+        double weight;
+
+        Edge(int dest, double weight) {
+            this.dest = dest;
+            this.weight = weight;
+        }
+    }
+
+    Graph(int V) {
+        this.V = V;
+        adjList = new ArrayList<>();
+        for (int i = 0; i < V; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    void addEdge(int src, int dest, double weight) {
+        adjList.get(src).add(new Edge(dest, weight));
+        adjList.get(dest).add(new Edge(src, weight)); // undirected graph
+    }
+
+    // Dijkstra’s algorithm to find shortest path
+    double shortestPath(int src, int dest) {
+        double[] dist = new double[V];
+        Arrays.fill(dist, Double.MAX_VALUE);
+        dist[src] = 0;
+
+        PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingDouble(e -> e.weight));
+        pq.add(new Edge(src, 0));
+
+        while (!pq.isEmpty()) {
+            Edge current = pq.poll();
+            int u = current.dest;
+
+            for (Edge edge : adjList.get(u)) {
+                int v = edge.dest;
+                double weight = edge.weight;
+
+                if (dist[u] + weight < dist[v]) {
+                    dist[v] = dist[u] + weight;
+                    pq.add(new Edge(v, dist[v]));
+                }
+            }
+        }
+
+        return dist[dest];
+    }
+}
+
+public class FoodOrderingSystem {
+    public static void main(String[] args) {
+        // Create restaurants
+        Restaurant r1 = new Restaurant(0, "Pizza Hut", Arrays.asList("Pizza", "Pasta"));
+        Restaurant r2 = new Restaurant(1, "Burger King", Arrays.asList("Burger", "Fries"));
+        Restaurant r3 = new Restaurant(2, "Subway", Arrays.asList("Sub", "Salad"));
+
+        // Create users
+        User u1 = new User(0, "Alice", 3);
+        User u2 = new User(1, "Bob", 4);
+
+        // Graph nodes: 0-2 restaurants, 3-4 users
+        Graph graph = new Graph(5);
+        // Add edges (distances in minutes)
+        graph.addEdge(0, 3, 10); // Pizza Hut to Alice
+        graph.addEdge(1, 3, 20); // Burger King to Alice
+        graph.addEdge(2, 3, 15); // Subway to Alice
+        graph.addEdge(0, 4, 30); // Pizza Hut to Bob
+        graph.addEdge(1, 4, 25); // Burger King to Bob
+        graph.addEdge(2, 4, 20); // Subway to Bob
+
+        // PriorityQueue for orders
+        PriorityQueue<Order> orderQueue = new PriorityQueue<>();
+
+        // Create orders (orderId, user, restaurant, priority)
+        orderQueue.add(new Order(101, u1, r1, 5)); // priority 5
+        orderQueue.add(new Order(102, u2, r2, 8)); // priority 8
+        orderQueue.add(new Order(103, u1, r3, 6)); // priority 6
+
+        // Process orders
+        while (!orderQueue.isEmpty()) {
+            Order order = orderQueue.poll();
+            double deliveryTime = graph.shortestPath(order.restaurant.id, order.user.locationId);
+            System.out.println("Deliver Order " + order.orderId + " from " + order.restaurant.name +
+                    " to " + order.user.name + " in " + deliveryTime + " mins. [Priority: " + order.priority + "]");
+        }
+    }
+}
